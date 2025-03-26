@@ -72,8 +72,8 @@ public class JwtProvider {
         final Instant accessExpirationInstant = now.plusMinutes(5).atZone(ZoneId.systemDefault()).toInstant();
         final Date accessExpiration = Date.from(accessExpirationInstant);
         return Jwts.builder()
-                .setSubject(user.getLogin())
-                .setExpiration(accessExpiration)
+                .subject(user.getLogin())
+                .expiration(accessExpiration)
                 .signWith(jwtAccessSecret)
                 .claim("roles", user.getRoles())
                 .claim("firstName", user.getFirstName())
@@ -91,8 +91,8 @@ public class JwtProvider {
         final Instant refreshExpirationInstant = now.plusDays(30).atZone(ZoneId.systemDefault()).toInstant();
         final Date refreshExpiration = Date.from(refreshExpirationInstant);
         return Jwts.builder()
-                .setSubject(user.getLogin())
-                .setExpiration(refreshExpiration)
+                .subject(user.getLogin())
+                .expiration(refreshExpiration)
                 .signWith(jwtRefreshSecret)
                 .compact();
     }
@@ -124,23 +124,21 @@ public class JwtProvider {
      * @param secret the secret key used for validation.
      * @return true if the token is valid, false otherwise.
      */
-    private boolean validateToken(@NonNull String token, @NonNull Key secret) {
+    private boolean validateToken(@NonNull String token, @NonNull SecretKey secret) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(secret)
+            Jwts.parser()
+                    .verifyWith(secret)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
-        } catch (ExpiredJwtException expEx) {
-            log.error("Token expired", expEx);
-        } catch (UnsupportedJwtException unsEx) {
-            log.error("Unsupported jwt", unsEx);
-        } catch (MalformedJwtException mjEx) {
-            log.error("Malformed jwt", mjEx);
-        } catch (SignatureException sEx) {
-            log.error("Invalid signature", sEx);
+        } catch (ExpiredJwtException e) {
+            log.error("Token expired", e);
+        } catch (UnsupportedJwtException e) {
+            log.error("Unsupported token", e);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.error("Malformed token", e);
         } catch (Exception e) {
-            log.error("invalid token", e);
+            log.error("Invalid token", e);
         }
         return false;
     }
@@ -172,12 +170,12 @@ public class JwtProvider {
      * @param secret the secret key used for extracting claims.
      * @return the claims extracted from the token.
      */
-    private Claims getClaims(@NonNull String token, @NonNull Key secret) {
-        return Jwts.parserBuilder()
-                .setSigningKey(secret)
+    private Claims getClaims(@NonNull String token, @NonNull SecretKey secret) {
+        return Jwts.parser()
+                .verifyWith(secret)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                . parseSignedClaims(token)
+                . getPayload();
     }
 
 }
